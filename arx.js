@@ -1,7 +1,7 @@
 const express = require('express');
 const dgram = require('dgram'); // इनबिल्ट नेटवर्किंग सॉकेट लाइब्रेरी
 const app = express();
-const PORT = 6000; // पूरी तरह से खाली और सुरक्षित पोर्ट
+const PORT = 8080; // पूरी तरह से खाली और सुरक्षित पोर्ट
 
 // यह चेक करने के लिए कि आपका डोमेन काम कर रहा है या नहीं
 app.get('/', (req, res) => {
